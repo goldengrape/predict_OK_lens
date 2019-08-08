@@ -37,13 +37,15 @@
 # * orbscan II：角膜地形图。
 #   也不是角膜地形图的原始数据，但除了Kmin, Kmax,还有Central corneal thickness, 3-mm-zone irregularity, 5-mm-zone irregularity
 
-# In[1]:
+# In[48]:
 
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from functools import reduce
+
 
 import os
 
@@ -52,38 +54,60 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 
 # ## 数据清洗
 # 
+# 读取数据后，将数据分成两部分，（务必要注意是否有数据泄露）
+# 
+# * X：从这些数据可能推导出结果，我估计会有术前的数据，一部分术后的数据。
+#     * patient_info中：``` ['Age','Sex (male = 1, female = 2']```
+#     * AXL：```['Pre C AXL', 'Pre N AXL', 'Pre T AXL'] ```
+#     * CR：
+#       ```python
+#          ['Pre AR C Sph', 'Pre AR C cyl',\
+#           'Pre AR N Sph', 'Pre AR N cyl',\
+#           'Pre AR T Sph', 'Pre AR T cyl']  
+#        ```
+#     * aberrometer:
+#         * Pre和12mo （犹豫，不知道是否有数据泄露）
+#     * cornea：
+#         * Pre和12mo
+# * Y：
+#     * AXL：12mo的C，N，T，以及delta，其中delta 12mo C AXL是最重要的数据。
 
-# In[21]:
+# In[89]:
 
 
 data_file=os.path.join('data',"pone.0218140.s001.xlsx")
+
+patient_info=pd.read_excel(data_file,sheet_name="age, sex, visual acuity")
 AXL=pd.read_excel(data_file,sheet_name="AXL")
 CR=pd.read_excel(data_file,sheet_name="CR ")
-aberrometer=pd.read_excel(data_file,sheet_name="aberrometer")
-cornea=pd.read_excel(data_file,sheet_name="orbscan II")
+
+# 以下两个sheet中，顶部有Pre，12mo一行，
+# 略去，使得每一行与其他表格中的行位置相等。
+aberrometer=pd.read_excel(data_file,sheet_name="aberrometer",header=1) 
+cornea=pd.read_excel(data_file,sheet_name="orbscan II",header=1) 
+data_frames=[patient_info,AXL,CR,aberrometer,cornea]
 
 
-# In[19]:
+# 并不是所有的人都测量了所有的参数，所以将Patient ID和眼别整合到一起，形成一个新的eyeID。
+
+# In[91]:
 
 
+for d in data_frames:
+    d["Patient"].fillna(method='ffill',inplace = True)
+    d["eyeID"]=d["Patient"]+" "+d['OD1, OS2'].map(str)
 
 
-
-# 数据清洗：
-# 
-# 
-
-# In[5]:
+# In[95]:
 
 
-df.columns
+df = reduce(lambda left,right: pd.merge(left,right,on='eyeID'), data_frames)
 
 
-# In[6]:
+# In[96]:
 
 
-# target_df=df["Spherical Diopter"].where(df["Right Eye"]=="12 months").dropna()
-# sns.distplot(target_df)
+df
 
 
 # In[ ]:

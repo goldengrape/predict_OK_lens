@@ -13160,13 +13160,15 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[48]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">reduce</span>
+
 
 <span class="kn">import</span> <span class="nn">os</span>
 
@@ -13181,20 +13183,74 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="&#25968;&#25454;&#28165;&#27927;">&#25968;&#25454;&#28165;&#27927;<a class="anchor-link" href="#&#25968;&#25454;&#28165;&#27927;">&#182;</a></h2>
+<h2 id="&#25968;&#25454;&#28165;&#27927;">&#25968;&#25454;&#28165;&#27927;<a class="anchor-link" href="#&#25968;&#25454;&#28165;&#27927;">&#182;</a></h2><p>读取数据后，将数据分成两部分，（务必要注意是否有数据泄露）</p>
+<ul>
+<li>X：从这些数据可能推导出结果，我估计会有术前的数据，一部分术后的数据。<ul>
+<li>patient_info中：<code>['Age','Sex (male = 1, female = 2']</code></li>
+<li>AXL：<code>['Pre C AXL', 'Pre N AXL', 'Pre T AXL']</code></li>
+<li>CR：<div class="highlight"><pre><span></span><span class="p">[</span><span class="s1">&#39;Pre AR C Sph&#39;</span><span class="p">,</span> <span class="s1">&#39;Pre AR C cyl&#39;</span><span class="p">,</span>\
+    <span class="s1">&#39;Pre AR N Sph&#39;</span><span class="p">,</span> <span class="s1">&#39;Pre AR N cyl&#39;</span><span class="p">,</span>\
+    <span class="s1">&#39;Pre AR T Sph&#39;</span><span class="p">,</span> <span class="s1">&#39;Pre AR T cyl&#39;</span><span class="p">]</span>
+</pre></div>
+</li>
+<li>aberrometer:<ul>
+<li>Pre和12mo （犹豫，不知道是否有数据泄露）</li>
+</ul>
+</li>
+<li>cornea：<ul>
+<li>Pre和12mo</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Y：<ul>
+<li>AXL：12mo的C，N，T，以及delta，其中delta 12mo C AXL是最重要的数据。</li>
+</ul>
+</li>
+</ul>
+
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[21]:</div>
+<div class="prompt input_prompt">In&nbsp;[89]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">data_file</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span><span class="s2">&quot;pone.0218140.s001.xlsx&quot;</span><span class="p">)</span>
+
+<span class="n">patient_info</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;age, sex, visual acuity&quot;</span><span class="p">)</span>
 <span class="n">AXL</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;AXL&quot;</span><span class="p">)</span>
 <span class="n">CR</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;CR &quot;</span><span class="p">)</span>
-<span class="n">aberrometer</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;aberrometer&quot;</span><span class="p">)</span>
-<span class="n">cornea</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;orbscan II&quot;</span><span class="p">)</span>
+
+<span class="c1"># 以下两个sheet中，顶部有Pre，12mo一行，</span>
+<span class="c1"># 略去，使得每一行与其他表格中的行位置相等。</span>
+<span class="n">aberrometer</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;aberrometer&quot;</span><span class="p">,</span><span class="n">header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> 
+<span class="n">cornea</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">data_file</span><span class="p">,</span><span class="n">sheet_name</span><span class="o">=</span><span class="s2">&quot;orbscan II&quot;</span><span class="p">,</span><span class="n">header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> 
+<span class="n">data_frames</span><span class="o">=</span><span class="p">[</span><span class="n">patient_info</span><span class="p">,</span><span class="n">AXL</span><span class="p">,</span><span class="n">CR</span><span class="p">,</span><span class="n">aberrometer</span><span class="p">,</span><span class="n">cornea</span><span class="p">]</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>并不是所有的人都测量了所有的参数，所以将Patient ID和眼别整合到一起，形成一个新的eyeID。</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[91]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data_frames</span><span class="p">:</span>
+    <span class="n">d</span><span class="p">[</span><span class="s2">&quot;Patient&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;ffill&#39;</span><span class="p">,</span><span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">d</span><span class="p">[</span><span class="s2">&quot;eyeID&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;Patient&quot;</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot; &quot;</span><span class="o">+</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;OD1, OS2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13204,10 +13260,23 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[95]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">left</span><span class="p">,</span><span class="n">right</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">left</span><span class="p">,</span><span class="n">right</span><span class="p">,</span><span class="n">on</span><span class="o">=</span><span class="s1">&#39;eyeID&#39;</span><span class="p">),</span> <span class="n">data_frames</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[96]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">df</span>
 </pre></div>
 
     </div>
@@ -13220,7 +13289,7 @@ div#notebook {
 
 <div class="output_area">
 
-    <div class="prompt output_prompt">Out[19]:</div>
+    <div class="prompt output_prompt">Out[96]:</div>
 
 
 
@@ -13243,650 +13312,590 @@ div#notebook {
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>Patient</th>
-      <th>OD1, OS2</th>
+      <th>Patient_x</th>
+      <th>Sex (male = 1, female = 2</th>
+      <th>OD1, OS2_x</th>
+      <th>Age</th>
+      <th>log UCVA</th>
+      <th>log BCVA</th>
+      <th>eyeID</th>
+      <th>Patient_y</th>
+      <th>OD1, OS2_y</th>
       <th>Pre C AXL</th>
-      <th>Pre N AXL</th>
-      <th>Pre T AXL</th>
-      <th>12mo C AXL</th>
-      <th>12mo N AXL</th>
-      <th>12mo T AXL</th>
-      <th>Pre C-N</th>
-      <th>Pre C-T</th>
-      <th>12mo C-N</th>
-      <th>12mo C-T</th>
-      <th>delta C-N_12mo</th>
-      <th>delta C-T_12mo</th>
-      <th>delta C_12mo</th>
-      <th>delta N_12mo</th>
-      <th>delta T_12mo</th>
+      <th>...</th>
+      <th>anterior chamber depth</th>
+      <th>Sim K's astigmatism.1</th>
+      <th>Kmax.1</th>
+      <th>Kmin.1</th>
+      <th>Central corneal thickness.1</th>
+      <th>3-mm-zone irregularity.1</th>
+      <th>5-mm-zone irregularity.1</th>
+      <th>pupil diameter.1</th>
+      <th>white-to-white.1</th>
+      <th>anterior chamber depth.1</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
       <td>#1</td>
+      <td>2.0</td>
+      <td>1.0</td>
+      <td>9.00000</td>
+      <td>0.698970</td>
+      <td>0.045757</td>
+      <td>#1 1.0</td>
+      <td>#1</td>
       <td>1.0</td>
       <td>23.570000</td>
-      <td>21.760000</td>
-      <td>21.700000</td>
-      <td>23.610000</td>
-      <td>22.160000</td>
-      <td>21.750000</td>
-      <td>1.810000</td>
-      <td>1.870000</td>
-      <td>1.450000</td>
-      <td>1.860000</td>
-      <td>0.360000</td>
-      <td>-0.050000</td>
-      <td>0.040000</td>
-      <td>0.400000</td>
-      <td>0.050000</td>
+      <td>...</td>
+      <td>3.080000</td>
+      <td>0.700000</td>
+      <td>44.300000</td>
+      <td>43.600000</td>
+      <td>494.000000</td>
+      <td>1.900000</td>
+      <td>2.100000</td>
+      <td>5.000000</td>
+      <td>11.200000</td>
+      <td>2.980000</td>
     </tr>
     <tr>
       <th>1</th>
+      <td>#1</td>
       <td>NaN</td>
       <td>2.0</td>
+      <td>NaN</td>
+      <td>0.301030</td>
+      <td>0.000000</td>
+      <td>#1 2.0</td>
+      <td>#1</td>
+      <td>2.0</td>
       <td>23.460000</td>
-      <td>21.560000</td>
-      <td>21.750000</td>
-      <td>23.230000</td>
-      <td>22.010000</td>
-      <td>21.830000</td>
-      <td>1.900000</td>
-      <td>1.710000</td>
-      <td>1.220000</td>
-      <td>1.400000</td>
-      <td>0.680000</td>
-      <td>0.500000</td>
-      <td>-0.230000</td>
-      <td>0.450000</td>
-      <td>0.080000</td>
+      <td>...</td>
+      <td>3.100000</td>
+      <td>1.300000</td>
+      <td>45.400000</td>
+      <td>44.100000</td>
+      <td>492.000000</td>
+      <td>1.800000</td>
+      <td>2.000000</td>
+      <td>5.000000</td>
+      <td>11.200000</td>
+      <td>2.960000</td>
     </tr>
     <tr>
       <th>2</th>
       <td>#2</td>
+      <td>2.0</td>
+      <td>1.0</td>
+      <td>9.00000</td>
+      <td>0.698970</td>
+      <td>0.000000</td>
+      <td>#2 1.0</td>
+      <td>#2</td>
       <td>1.0</td>
       <td>24.200000</td>
-      <td>22.900000</td>
-      <td>22.760000</td>
-      <td>24.590000</td>
-      <td>23.310000</td>
-      <td>23.320000</td>
-      <td>1.300000</td>
-      <td>1.440000</td>
-      <td>1.280000</td>
-      <td>1.270000</td>
-      <td>0.020000</td>
-      <td>0.030000</td>
-      <td>0.390000</td>
-      <td>0.410000</td>
-      <td>0.560000</td>
+      <td>...</td>
+      <td>3.090000</td>
+      <td>2.200000</td>
+      <td>42.300000</td>
+      <td>40.100000</td>
+      <td>549.000000</td>
+      <td>2.900000</td>
+      <td>3.500000</td>
+      <td>5.200000</td>
+      <td>11.600000</td>
+      <td>3.070000</td>
     </tr>
     <tr>
       <th>3</th>
+      <td>#2</td>
       <td>NaN</td>
       <td>2.0</td>
+      <td>NaN</td>
+      <td>0.698970</td>
+      <td>0.045757</td>
+      <td>#2 2.0</td>
+      <td>#2</td>
+      <td>2.0</td>
       <td>24.090000</td>
-      <td>22.750000</td>
-      <td>22.690000</td>
-      <td>24.430000</td>
-      <td>23.060000</td>
-      <td>23.010000</td>
-      <td>1.340000</td>
-      <td>1.400000</td>
-      <td>1.370000</td>
-      <td>1.420000</td>
-      <td>-0.030000</td>
-      <td>-0.080000</td>
-      <td>0.340000</td>
-      <td>0.310000</td>
-      <td>0.320000</td>
+      <td>...</td>
+      <td>3.040000</td>
+      <td>1.500000</td>
+      <td>42.500000</td>
+      <td>40.900000</td>
+      <td>553.000000</td>
+      <td>3.600000</td>
+      <td>3.400000</td>
+      <td>4.400000</td>
+      <td>11.500000</td>
+      <td>3.020000</td>
     </tr>
     <tr>
       <th>4</th>
       <td>#3</td>
+      <td>2.0</td>
+      <td>1.0</td>
+      <td>9.00000</td>
+      <td>0.522879</td>
+      <td>0.000000</td>
+      <td>#3 1.0</td>
+      <td>#3</td>
       <td>1.0</td>
       <td>24.230000</td>
-      <td>23.770000</td>
-      <td>23.320000</td>
-      <td>24.630000</td>
-      <td>24.130000</td>
-      <td>23.690000</td>
-      <td>0.460000</td>
-      <td>0.910000</td>
-      <td>0.500000</td>
-      <td>0.940000</td>
-      <td>-0.040000</td>
-      <td>-0.480000</td>
-      <td>0.400000</td>
-      <td>0.360000</td>
-      <td>0.370000</td>
+      <td>...</td>
+      <td>3.140000</td>
+      <td>0.700000</td>
+      <td>41.500000</td>
+      <td>40.800000</td>
+      <td>568.000000</td>
+      <td>2.600000</td>
+      <td>3.800000</td>
+      <td>4.400000</td>
+      <td>11.400000</td>
+      <td>3.110000</td>
     </tr>
     <tr>
       <th>5</th>
+      <td>#3</td>
       <td>NaN</td>
       <td>2.0</td>
+      <td>NaN</td>
+      <td>0.522879</td>
+      <td>0.000000</td>
+      <td>#3 2.0</td>
+      <td>#3</td>
+      <td>2.0</td>
       <td>24.110000</td>
-      <td>23.700000</td>
-      <td>23.380000</td>
-      <td>24.500000</td>
-      <td>24.050000</td>
-      <td>23.480000</td>
-      <td>0.410000</td>
-      <td>0.730000</td>
-      <td>0.450000</td>
-      <td>1.020000</td>
-      <td>-0.040000</td>
-      <td>-0.610000</td>
-      <td>0.390000</td>
-      <td>0.350000</td>
-      <td>0.100000</td>
+      <td>...</td>
+      <td>3.150000</td>
+      <td>0.400000</td>
+      <td>42.000000</td>
+      <td>41.600000</td>
+      <td>572.000000</td>
+      <td>1.400000</td>
+      <td>1.800000</td>
+      <td>4.600000</td>
+      <td>11.500000</td>
+      <td>3.100000</td>
     </tr>
     <tr>
       <th>6</th>
       <td>#4</td>
+      <td>2.0</td>
+      <td>1.0</td>
+      <td>9.00000</td>
+      <td>0.522879</td>
+      <td>0.000000</td>
+      <td>#4 1.0</td>
+      <td>#4</td>
       <td>1.0</td>
       <td>23.070000</td>
-      <td>22.570000</td>
-      <td>21.970000</td>
-      <td>23.730000</td>
-      <td>23.240000</td>
-      <td>22.540000</td>
-      <td>0.500000</td>
-      <td>1.100000</td>
-      <td>0.490000</td>
-      <td>1.190000</td>
-      <td>0.010000</td>
-      <td>-0.690000</td>
-      <td>0.660000</td>
-      <td>0.670000</td>
-      <td>0.570000</td>
+      <td>...</td>
+      <td>3.130000</td>
+      <td>0.900000</td>
+      <td>44.200000</td>
+      <td>43.400000</td>
+      <td>511.000000</td>
+      <td>2.000000</td>
+      <td>2.300000</td>
+      <td>4.900000</td>
+      <td>11.100000</td>
+      <td>3.160000</td>
     </tr>
     <tr>
       <th>7</th>
+      <td>#4</td>
       <td>NaN</td>
       <td>2.0</td>
+      <td>NaN</td>
+      <td>0.522879</td>
+      <td>0.000000</td>
+      <td>#4 2.0</td>
+      <td>#4</td>
+      <td>2.0</td>
       <td>22.960000</td>
-      <td>22.640000</td>
-      <td>22.120000</td>
-      <td>23.610000</td>
-      <td>22.960000</td>
-      <td>22.660000</td>
-      <td>0.320000</td>
-      <td>0.840000</td>
-      <td>0.650000</td>
-      <td>0.950000</td>
-      <td>-0.330000</td>
-      <td>-0.630000</td>
-      <td>0.650000</td>
-      <td>0.320000</td>
-      <td>0.540000</td>
+      <td>...</td>
+      <td>2.990000</td>
+      <td>0.800000</td>
+      <td>44.000000</td>
+      <td>43.200000</td>
+      <td>519.000000</td>
+      <td>2.400000</td>
+      <td>2.900000</td>
+      <td>5.000000</td>
+      <td>11.200000</td>
+      <td>3.110000</td>
     </tr>
     <tr>
       <th>8</th>
       <td>#5</td>
+      <td>2.0</td>
+      <td>1.0</td>
+      <td>9.00000</td>
+      <td>0.522879</td>
+      <td>0.000000</td>
+      <td>#5 1.0</td>
+      <td>#5</td>
       <td>1.0</td>
       <td>24.900000</td>
-      <td>24.400000</td>
-      <td>24.100000</td>
-      <td>25.230000</td>
-      <td>24.290000</td>
-      <td>23.930000</td>
-      <td>0.500000</td>
-      <td>0.800000</td>
-      <td>0.940000</td>
-      <td>1.300000</td>
-      <td>-0.440000</td>
-      <td>-0.800000</td>
-      <td>0.330000</td>
-      <td>-0.110000</td>
-      <td>-0.170000</td>
+      <td>...</td>
+      <td>3.270000</td>
+      <td>0.600000</td>
+      <td>41.000000</td>
+      <td>40.400000</td>
+      <td>534.000000</td>
+      <td>3.300000</td>
+      <td>3.200000</td>
+      <td>4.900000</td>
+      <td>11.900000</td>
+      <td>3.260000</td>
     </tr>
     <tr>
       <th>9</th>
+      <td>#5</td>
       <td>NaN</td>
       <td>2.0</td>
+      <td>NaN</td>
+      <td>0.522879</td>
+      <td>0.000000</td>
+      <td>#5 2.0</td>
+      <td>#5</td>
+      <td>2.0</td>
       <td>24.860000</td>
-      <td>24.560000</td>
-      <td>24.260000</td>
-      <td>25.260000</td>
-      <td>24.220000</td>
-      <td>23.950000</td>
-      <td>0.300000</td>
-      <td>0.600000</td>
-      <td>1.040000</td>
-      <td>1.310000</td>
-      <td>-0.740000</td>
-      <td>-1.010000</td>
-      <td>0.400000</td>
-      <td>-0.340000</td>
-      <td>-0.310000</td>
+      <td>...</td>
+      <td>3.080000</td>
+      <td>1.500000</td>
+      <td>41.700000</td>
+      <td>40.200000</td>
+      <td>529.000000</td>
+      <td>6.200000</td>
+      <td>8.100000</td>
+      <td>5.200000</td>
+      <td>12.200000</td>
+      <td>3.250000</td>
     </tr>
     <tr>
       <th>10</th>
       <td>#6</td>
       <td>1.0</td>
+      <td>1.0</td>
+      <td>9.00000</td>
+      <td>1.000000</td>
+      <td>0.000000</td>
+      <td>#6 1.0</td>
+      <td>#6</td>
+      <td>1.0</td>
       <td>25.320000</td>
-      <td>23.530000</td>
-      <td>23.460000</td>
-      <td>25.600000</td>
-      <td>23.730000</td>
-      <td>24.010000</td>
-      <td>1.790000</td>
-      <td>1.860000</td>
-      <td>1.870000</td>
-      <td>1.590000</td>
-      <td>-0.080000</td>
-      <td>0.200000</td>
-      <td>0.280000</td>
-      <td>0.200000</td>
-      <td>0.550000</td>
+      <td>...</td>
+      <td>3.450000</td>
+      <td>1.100000</td>
+      <td>43.200000</td>
+      <td>42.100000</td>
+      <td>550.000000</td>
+      <td>0.700000</td>
+      <td>1.000000</td>
+      <td>4.800000</td>
+      <td>12.100000</td>
+      <td>3.490000</td>
     </tr>
     <tr>
       <th>11</th>
+      <td>#6</td>
       <td>NaN</td>
       <td>2.0</td>
-      <td>25.110000</td>
-      <td>23.670000</td>
-      <td>23.540000</td>
-      <td>25.370000</td>
-      <td>24.370000</td>
-      <td>23.990000</td>
-      <td>1.440000</td>
-      <td>1.570000</td>
+      <td>NaN</td>
       <td>1.000000</td>
-      <td>1.380000</td>
-      <td>0.440000</td>
-      <td>0.060000</td>
-      <td>0.260000</td>
-      <td>0.700000</td>
-      <td>0.450000</td>
+      <td>0.000000</td>
+      <td>#6 2.0</td>
+      <td>#6</td>
+      <td>2.0</td>
+      <td>25.110000</td>
+      <td>...</td>
+      <td>3.450000</td>
+      <td>1.300000</td>
+      <td>43.500000</td>
+      <td>42.200000</td>
+      <td>551.000000</td>
+      <td>1.200000</td>
+      <td>1.700000</td>
+      <td>4.500000</td>
+      <td>12.300000</td>
+      <td>3.500000</td>
     </tr>
     <tr>
       <th>12</th>
       <td>#7</td>
+      <td>2.0</td>
+      <td>1.0</td>
+      <td>9.00000</td>
+      <td>0.698970</td>
+      <td>0.000000</td>
+      <td>#7 1.0</td>
+      <td>#7</td>
       <td>1.0</td>
       <td>23.970000</td>
-      <td>22.510000</td>
-      <td>22.860000</td>
-      <td>24.090000</td>
-      <td>22.830000</td>
-      <td>23.100000</td>
-      <td>1.460000</td>
-      <td>1.110000</td>
-      <td>1.260000</td>
-      <td>0.990000</td>
-      <td>0.200000</td>
-      <td>0.470000</td>
-      <td>0.120000</td>
-      <td>0.320000</td>
-      <td>0.240000</td>
+      <td>...</td>
+      <td>2.950000</td>
+      <td>1.000000</td>
+      <td>42.700000</td>
+      <td>41.700000</td>
+      <td>535.000000</td>
+      <td>2.200000</td>
+      <td>4.100000</td>
+      <td>4.500000</td>
+      <td>11.100000</td>
+      <td>3.030000</td>
     </tr>
     <tr>
       <th>13</th>
+      <td>#7</td>
       <td>NaN</td>
       <td>2.0</td>
+      <td>NaN</td>
+      <td>0.698970</td>
+      <td>0.000000</td>
+      <td>#7 2.0</td>
+      <td>#7</td>
+      <td>2.0</td>
       <td>24.020000</td>
-      <td>22.570000</td>
-      <td>22.740000</td>
-      <td>24.110000</td>
-      <td>22.850000</td>
-      <td>22.950000</td>
-      <td>1.450000</td>
-      <td>1.280000</td>
-      <td>1.260000</td>
-      <td>1.160000</td>
-      <td>0.190000</td>
-      <td>0.290000</td>
-      <td>0.090000</td>
-      <td>0.280000</td>
-      <td>0.210000</td>
+      <td>...</td>
+      <td>3.010000</td>
+      <td>1.200000</td>
+      <td>43.200000</td>
+      <td>42.000000</td>
+      <td>543.000000</td>
+      <td>2.200000</td>
+      <td>4.800000</td>
+      <td>4.300000</td>
+      <td>11.200000</td>
+      <td>2.990000</td>
     </tr>
     <tr>
       <th>14</th>
       <td>#8</td>
+      <td>2.0</td>
+      <td>1.0</td>
+      <td>8.00000</td>
+      <td>0.522879</td>
+      <td>0.000000</td>
+      <td>#8 1.0</td>
+      <td>#8</td>
       <td>1.0</td>
       <td>23.290000</td>
-      <td>22.070000</td>
-      <td>22.130000</td>
-      <td>23.790000</td>
-      <td>23.180000</td>
-      <td>22.470000</td>
-      <td>1.220000</td>
-      <td>1.160000</td>
-      <td>0.610000</td>
-      <td>1.320000</td>
-      <td>0.610000</td>
-      <td>-0.100000</td>
-      <td>0.500000</td>
-      <td>1.110000</td>
-      <td>0.340000</td>
+      <td>...</td>
+      <td>2.850000</td>
+      <td>1.000000</td>
+      <td>43.000000</td>
+      <td>42.000000</td>
+      <td>566.000000</td>
+      <td>1.200000</td>
+      <td>2.500000</td>
+      <td>4.500000</td>
+      <td>11.200000</td>
+      <td>2.770000</td>
     </tr>
     <tr>
       <th>15</th>
+      <td>#8</td>
       <td>NaN</td>
       <td>2.0</td>
+      <td>NaN</td>
+      <td>0.397940</td>
+      <td>0.000000</td>
+      <td>#8 2.0</td>
+      <td>#8</td>
+      <td>2.0</td>
       <td>23.400000</td>
-      <td>22.700000</td>
-      <td>22.250000</td>
-      <td>23.940000</td>
-      <td>23.480000</td>
-      <td>22.550000</td>
-      <td>0.700000</td>
-      <td>1.150000</td>
-      <td>0.460000</td>
-      <td>1.390000</td>
-      <td>0.240000</td>
-      <td>-0.690000</td>
-      <td>0.540000</td>
-      <td>0.780000</td>
-      <td>0.300000</td>
+      <td>...</td>
+      <td>2.790000</td>
+      <td>1.100000</td>
+      <td>42.800000</td>
+      <td>41.700000</td>
+      <td>570.000000</td>
+      <td>1.600000</td>
+      <td>2.900000</td>
+      <td>5.000000</td>
+      <td>11.300000</td>
+      <td>2.780000</td>
     </tr>
     <tr>
       <th>16</th>
-      <td>#11</td>
-      <td>1.0</td>
-      <td>24.290000</td>
-      <td>23.070000</td>
-      <td>22.840000</td>
-      <td>24.520000</td>
-      <td>23.270000</td>
-      <td>22.950000</td>
-      <td>1.220000</td>
-      <td>1.450000</td>
-      <td>1.250000</td>
-      <td>1.570000</td>
-      <td>-0.030000</td>
-      <td>-0.350000</td>
-      <td>0.230000</td>
-      <td>0.200000</td>
-      <td>0.110000</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>NaN</td>
+      <td>#13</td>
       <td>2.0</td>
-      <td>24.340000</td>
-      <td>23.030000</td>
-      <td>22.960000</td>
-      <td>24.440000</td>
-      <td>23.370000</td>
-      <td>23.200000</td>
-      <td>1.310000</td>
-      <td>1.380000</td>
-      <td>1.070000</td>
-      <td>1.240000</td>
-      <td>0.240000</td>
-      <td>0.070000</td>
-      <td>0.100000</td>
-      <td>0.340000</td>
-      <td>0.240000</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>#12</td>
       <td>1.0</td>
-      <td>24.810000</td>
-      <td>23.770000</td>
-      <td>23.330000</td>
-      <td>24.880000</td>
-      <td>23.660000</td>
-      <td>23.350000</td>
-      <td>1.040000</td>
-      <td>1.480000</td>
-      <td>1.220000</td>
-      <td>1.530000</td>
-      <td>-0.180000</td>
-      <td>-0.490000</td>
-      <td>0.070000</td>
-      <td>-0.110000</td>
-      <td>0.020000</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>NaN</td>
-      <td>2.0</td>
-      <td>24.780000</td>
-      <td>24.290000</td>
-      <td>23.730000</td>
-      <td>24.840000</td>
-      <td>23.580000</td>
-      <td>23.820000</td>
-      <td>0.490000</td>
-      <td>1.050000</td>
-      <td>1.260000</td>
-      <td>1.020000</td>
-      <td>-0.770000</td>
-      <td>-0.530000</td>
-      <td>0.060000</td>
-      <td>-0.710000</td>
-      <td>0.090000</td>
-    </tr>
-    <tr>
-      <th>20</th>
+      <td>9.00000</td>
+      <td>0.698970</td>
+      <td>0.000000</td>
+      <td>#13 1.0</td>
       <td>#13</td>
       <td>1.0</td>
       <td>24.440000</td>
-      <td>23.640000</td>
-      <td>23.310000</td>
-      <td>24.730000</td>
-      <td>23.910000</td>
-      <td>23.320000</td>
-      <td>0.800000</td>
-      <td>1.130000</td>
-      <td>0.820000</td>
-      <td>1.410000</td>
-      <td>-0.020000</td>
-      <td>-0.610000</td>
-      <td>0.290000</td>
-      <td>0.270000</td>
-      <td>0.010000</td>
+      <td>...</td>
+      <td>3.010000</td>
+      <td>0.900000</td>
+      <td>41.100000</td>
+      <td>40.300000</td>
+      <td>517.000000</td>
+      <td>1.500000</td>
+      <td>3.600000</td>
+      <td>5.100000</td>
+      <td>11.200000</td>
+      <td>3.000000</td>
     </tr>
     <tr>
-      <th>21</th>
+      <th>17</th>
+      <td>#13</td>
       <td>NaN</td>
+      <td>2.0</td>
+      <td>NaN</td>
+      <td>0.698970</td>
+      <td>0.000000</td>
+      <td>#13 2.0</td>
+      <td>#13</td>
       <td>2.0</td>
       <td>24.470000</td>
-      <td>23.660000</td>
-      <td>23.140000</td>
-      <td>24.720000</td>
-      <td>23.870000</td>
-      <td>23.610000</td>
-      <td>0.810000</td>
-      <td>1.330000</td>
-      <td>0.850000</td>
-      <td>1.110000</td>
-      <td>-0.040000</td>
-      <td>-0.300000</td>
-      <td>0.250000</td>
-      <td>0.210000</td>
-      <td>0.470000</td>
-    </tr>
-    <tr>
-      <th>22</th>
-      <td>#14</td>
-      <td>1.0</td>
-      <td>24.330000</td>
-      <td>22.730000</td>
-      <td>22.990000</td>
-      <td>24.530000</td>
-      <td>23.450000</td>
-      <td>23.030000</td>
-      <td>1.600000</td>
-      <td>1.340000</td>
-      <td>1.080000</td>
+      <td>...</td>
+      <td>2.950000</td>
+      <td>0.700000</td>
+      <td>40.500000</td>
+      <td>39.800000</td>
+      <td>511.000000</td>
       <td>1.500000</td>
-      <td>0.520000</td>
-      <td>0.100000</td>
-      <td>0.200000</td>
-      <td>0.720000</td>
-      <td>0.040000</td>
+      <td>3.700000</td>
+      <td>5.700000</td>
+      <td>11.300000</td>
+      <td>2.920000</td>
     </tr>
     <tr>
-      <th>23</th>
+      <th>18</th>
+      <td>Standard deviation</td>
       <td>NaN</td>
-      <td>2.0</td>
-      <td>24.250000</td>
-      <td>22.850000</td>
-      <td>22.730000</td>
-      <td>24.380000</td>
-      <td>22.830000</td>
-      <td>22.850000</td>
-      <td>1.400000</td>
-      <td>1.520000</td>
-      <td>1.550000</td>
-      <td>1.530000</td>
-      <td>-0.150000</td>
-      <td>-0.130000</td>
-      <td>0.130000</td>
-      <td>-0.020000</td>
-      <td>0.120000</td>
-    </tr>
-    <tr>
-      <th>24</th>
-      <td>#15</td>
-      <td>1.0</td>
-      <td>24.530000</td>
-      <td>23.730000</td>
-      <td>23.620000</td>
-      <td>24.870000</td>
-      <td>23.810000</td>
-      <td>23.530000</td>
-      <td>0.800000</td>
-      <td>0.910000</td>
-      <td>1.060000</td>
-      <td>1.340000</td>
-      <td>-0.260000</td>
-      <td>-0.540000</td>
-      <td>0.340000</td>
-      <td>0.080000</td>
-      <td>-0.090000</td>
-    </tr>
-    <tr>
-      <th>25</th>
       <td>NaN</td>
-      <td>2.0</td>
-      <td>24.560000</td>
-      <td>23.640000</td>
-      <td>23.100000</td>
-      <td>24.930000</td>
-      <td>24.580000</td>
-      <td>24.740000</td>
-      <td>0.920000</td>
-      <td>1.460000</td>
-      <td>0.350000</td>
-      <td>0.190000</td>
-      <td>0.570000</td>
-      <td>0.730000</td>
-      <td>0.370000</td>
-      <td>0.940000</td>
-      <td>1.640000</td>
-    </tr>
-    <tr>
-      <th>26</th>
-      <td>Average</td>
-      <td>NaN</td>
-      <td>24.206154</td>
-      <td>23.156538</td>
-      <td>22.953077</td>
-      <td>24.483077</td>
-      <td>23.469231</td>
-      <td>23.216538</td>
-      <td>1.049615</td>
-      <td>1.253077</td>
-      <td>1.013846</td>
-      <td>1.266538</td>
-      <td>0.035769</td>
-      <td>-0.216923</td>
-      <td>0.276923</td>
-      <td>0.312692</td>
-      <td>0.263462</td>
-    </tr>
-    <tr>
-      <th>27</th>
+      <td>0.69102</td>
+      <td>0.322361</td>
+      <td>0.015133</td>
+      <td>Standard deviation nan</td>
       <td>Standard deviation</td>
       <td>NaN</td>
       <td>0.603363</td>
-      <td>0.761910</td>
-      <td>0.661890</td>
-      <td>0.579461</td>
-      <td>0.630219</td>
-      <td>0.672418</td>
-      <td>0.485113</td>
-      <td>0.327012</td>
-      <td>0.377778</td>
-      <td>0.306957</td>
-      <td>0.366398</td>
-      <td>0.437148</td>
-      <td>0.196601</td>
-      <td>0.380511</td>
-      <td>0.358082</td>
+      <td>...</td>
+      <td>0.181805</td>
+      <td>0.443431</td>
+      <td>1.164296</td>
+      <td>1.138375</td>
+      <td>27.038005</td>
+      <td>1.009622</td>
+      <td>1.367422</td>
+      <td>0.694615</td>
+      <td>0.373277</td>
+      <td>0.198789</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>Standard deviation</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0.69102</td>
+      <td>0.322361</td>
+      <td>0.015133</td>
+      <td>Standard deviation nan</td>
+      <td>Standard deviation</td>
+      <td>NaN</td>
+      <td>0.603363</td>
+      <td>...</td>
+      <td>0.181805</td>
+      <td>0.443431</td>
+      <td>1.164296</td>
+      <td>1.138375</td>
+      <td>27.038005</td>
+      <td>1.009622</td>
+      <td>1.367422</td>
+      <td>0.694615</td>
+      <td>0.373277</td>
+      <td>0.198789</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>Standard deviation</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0.69102</td>
+      <td>0.322361</td>
+      <td>0.015133</td>
+      <td>Standard deviation nan</td>
+      <td>Standard deviation</td>
+      <td>NaN</td>
+      <td>0.603363</td>
+      <td>...</td>
+      <td>0.181805</td>
+      <td>0.443431</td>
+      <td>1.164296</td>
+      <td>1.138375</td>
+      <td>27.038005</td>
+      <td>1.009622</td>
+      <td>1.367422</td>
+      <td>0.694615</td>
+      <td>0.373277</td>
+      <td>0.198789</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>Standard deviation</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0.69102</td>
+      <td>0.322361</td>
+      <td>0.015133</td>
+      <td>Standard deviation nan</td>
+      <td>Standard deviation</td>
+      <td>NaN</td>
+      <td>0.603363</td>
+      <td>...</td>
+      <td>0.181805</td>
+      <td>0.443431</td>
+      <td>1.164296</td>
+      <td>1.138375</td>
+      <td>27.038005</td>
+      <td>1.009622</td>
+      <td>1.367422</td>
+      <td>0.694615</td>
+      <td>0.373277</td>
+      <td>0.198789</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>Standard deviation</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>0.69102</td>
+      <td>0.322361</td>
+      <td>0.015133</td>
+      <td>Standard deviation nan</td>
+      <td>Standard deviation</td>
+      <td>NaN</td>
+      <td>0.603363</td>
+      <td>...</td>
+      <td>0.181805</td>
+      <td>0.443431</td>
+      <td>1.164296</td>
+      <td>1.138375</td>
+      <td>27.038005</td>
+      <td>1.009622</td>
+      <td>1.367422</td>
+      <td>0.694615</td>
+      <td>0.373277</td>
+      <td>0.198789</td>
     </tr>
   </tbody>
 </table>
+<p>23 rows × 106 columns</p>
 </div>
 </div>
 
 </div>
 
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>数据清洗：</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">columns</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt output_prompt">Out[5]:</div>
-
-
-
-
-<div class="output_text output_subarea output_execute_result">
-<pre>Index([&#39;Patient&#39;, &#39;Sex (male = 1, female = 2&#39;, &#39;OD1, OS2&#39;, &#39;Age&#39;, &#39;log UCVA&#39;,
-       &#39;log BCVA&#39;],
-      dtype=&#39;object&#39;)</pre>
-</div>
-
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># target_df=df[&quot;Spherical Diopter&quot;].where(df[&quot;Right Eye&quot;]==&quot;12 months&quot;).dropna()</span>
-<span class="c1"># sns.distplot(target_df)</span>
-</pre></div>
-
-    </div>
 </div>
 </div>
 
