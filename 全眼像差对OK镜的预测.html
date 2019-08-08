@@ -13456,14 +13456,21 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="&#24314;&#31435;&#27169;&#22411;">&#24314;&#31435;&#27169;&#22411;<a class="anchor-link" href="#&#24314;&#31435;&#27169;&#22411;">&#182;</a></h2>
+<h2 id="&#24314;&#31435;&#27169;&#22411;">&#24314;&#31435;&#27169;&#22411;<a class="anchor-link" href="#&#24314;&#31435;&#27169;&#22411;">&#182;</a></h2><p>随手建立的最简单模型，输入数据使用能找到的所有数据，这样可能噪声会很大。</p>
+<p>分成两类，</p>
+<ul>
+<li>拟合模型，也就是通过一大堆的输入，争取能够猜出未来眼轴变化的准确数值。</li>
+<li>分类模型，设定一个阈值，比如眼轴增长是否&gt;0.2mm，通过一堆数据输入，猜出未来眼轴是否大于阈值。</li>
+</ul>
+
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="&#32447;&#24615;&#25311;&#21512;">&#32447;&#24615;&#25311;&#21512;<a class="anchor-link" href="#&#32447;&#24615;&#25311;&#21512;">&#182;</a></h2>
+<h2 id="&#32447;&#24615;&#25311;&#21512;">&#32447;&#24615;&#25311;&#21512;<a class="anchor-link" href="#&#32447;&#24615;&#25311;&#21512;">&#182;</a></h2><p>仅仅是强行画条直线，看起来并不好</p>
+
 </div>
 </div>
 </div>
@@ -13508,7 +13515,8 @@ R-squared score (test): -1.776
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="&#38543;&#26426;&#26862;&#26519;&#25311;&#21512;">&#38543;&#26426;&#26862;&#26519;&#25311;&#21512;<a class="anchor-link" href="#&#38543;&#26426;&#26862;&#26519;&#25311;&#21512;">&#182;</a></h2>
+<h2 id="&#38543;&#26426;&#26862;&#26519;&#25311;&#21512;">&#38543;&#26426;&#26862;&#26519;&#25311;&#21512;<a class="anchor-link" href="#&#38543;&#26426;&#26862;&#26519;&#25311;&#21512;">&#182;</a></h2><p>也没好到哪去</p>
+
 </div>
 </div>
 </div>
@@ -13564,7 +13572,8 @@ R-squared score (test): -1.857
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="&#38543;&#26426;&#26862;&#26519;&#20998;&#31867;">&#38543;&#26426;&#26862;&#26519;&#20998;&#31867;<a class="anchor-link" href="#&#38543;&#26426;&#26862;&#26519;&#20998;&#31867;">&#182;</a></h3>
+<h3 id="&#38543;&#26426;&#26862;&#26519;&#20998;&#31867;">&#38543;&#26426;&#26862;&#26519;&#20998;&#31867;<a class="anchor-link" href="#&#38543;&#26426;&#26862;&#26519;&#20998;&#31867;">&#182;</a></h3><p>手动设定阈值。</p>
+
 </div>
 </div>
 </div>
@@ -13622,6 +13631,18 @@ R-squared score (test): 0.600
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>分类模型的评价指标除了R-squared的得分，更好的是使用ROC曲线，以及曲线下的面积AUC。</p>
+<ul>
+<li>ROC曲线越偏向左上方，AUC越接近1，模型越好</li>
+<li>ROC曲线接近0.5的红线，AUC评分接近0.5，则接近于瞎猜。</li>
+</ul>
+
+</div>
+</div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
