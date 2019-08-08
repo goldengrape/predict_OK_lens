@@ -139,8 +139,9 @@ df_x=df[[
         'C2−2', 'C20', 'C22', 'C3−3', 'C3−1', 'C31', 
         'C33', 'C4−4', 'C4−2', 'C40', 'C42', 'C44',
         # 术后像差
-        'C2−2.1','C20.1', 'C22.1', 'C3−3.1', 'C3−1.1', 'C31.1', 
-        'C33.1', 'C4−4.1','C4−2.1', 'C40.1', 'C42.1', 'C44.1',
+        'C2−2.1','C20.1', 'C22.1', 
+        'C3−3.1', 'C3−1.1', 'C31.1','C33.1', 
+        'C4−4.1','C4−2.1', 'C40.1', 'C42.1', 'C44.1',
         # 术前角膜地形图
        "Sim K's astigmatism", 'Kmax',
        'Kmin', 'Central corneal thickness', '3-mm-zone irregularity',
@@ -175,7 +176,7 @@ sns.violinplot(data=df_y_candidate[['delta C_12mo','delta N_12mo', 'delta T_12mo
 # In[7]:
 
 
-rs=ShuffleSplit(n_splits=1, test_size=0.25, random_state=0)
+rs=ShuffleSplit(n_splits=1, test_size=0.25)#, random_state=3)
 for train_index, test_index in rs.split(df_x):
     print("TRAIN:", train_index, "TEST:", test_index)
 
@@ -183,18 +184,18 @@ for train_index, test_index in rs.split(df_x):
 # In[8]:
 
 
-target=0 # 暂时只先定一个拟合目标。
+target=3 # 暂时只先定一个拟合目标。
 X_train=df_x.iloc[train_index,:]
-y_train=df_y_candidate.iloc[train_index,0]
+y_train=df_y_candidate.iloc[train_index,target]
 X_test=df_x.iloc[test_index,:]
-y_test=df_y_candidate.iloc[test_index,0]
+y_test=df_y_candidate.iloc[test_index,target]
 
 
 # ## 建立模型
 
 # ## 线性拟合
 
-# In[14]:
+# In[9]:
 
 
 from sklearn.linear_model import LinearRegression
@@ -208,7 +209,7 @@ print('R-squared score (test): {:.3f}'
 
 # ## 随机森林拟合
 
-# In[16]:
+# In[10]:
 
 
 from sklearn.ensemble import RandomForestRegressor
@@ -219,19 +220,71 @@ print('R-squared score (test): {:.3f}'
      .format(model.score(X_test, y_test)))
 
 
+# ### 随机森林分类
+
+# In[11]:
+
+
+from sklearn.ensemble import RandomForestClassifier
+
+threshold=0.2 # 设定眼轴增长的分界阈值
+
+model=RandomForestClassifier().fit(X_train,y_train>threshold)
+print('R-squared score (training): {:.3f}'
+     .format(model.score(X_train, y_train>threshold)))
+print('R-squared score (test): {:.3f}'
+     .format(model.score(X_test, y_test>threshold)))
+
+# print(y_train>threshold)
+# print(y_test>threshold)
+
+
+# In[12]:
+
+
+predict_y_validation = model.predict(X_test)#直接给出预测结果，每个点在所有label的概率和为1，内部还是调用predict——proba()
+# print(predict_y_validation)
+prob_predict_y_validation = model.predict_proba(X_test)#给出带有概率值的结果，每个点所有label的概率和为1
+predictions_validation = prob_predict_y_validation[:, 1]
+
+
+# In[13]:
+
+
+print(list(y_test>threshold), predict_y_validation)
+
+
+# In[14]:
+
+
+from sklearn.metrics import roc_curve, auc
+
+fpr, tpr, _ = roc_curve(y_test>threshold, predictions_validation)
+
+roc_auc = auc(fpr, tpr)
+plt.title('ROC Validation')
+plt.xlim([0, 1])
+plt.ylim([0, 1])
+plt.plot(fpr, tpr, 'b', label='AUC = %0.2f' % roc_auc)
+plt.legend(loc='lower right')
+plt.plot([0, 1], [0, 1], 'r--')
+
+print("AUC = %0.2f" % roc_auc)
+
+
 # ## Logistic回归
 # 
 # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
 
-# In[19]:
+# In[15]:
 
 
-from sklearn.linear_model import LogisticRegression
-model=LogisticRegression().fit(X_train,y_train)
-print('R-squared score (training): {:.3f}'
-     .format(model.score(X_train, y_train)))
-print('R-squared score (test): {:.3f}'
-     .format(model.score(X_test, y_test)))
+# from sklearn.linear_model import LogisticRegression
+# model=LogisticRegression().fit(X_train,y_train)
+# print('R-squared score (training): {:.3f}'
+#      .format(model.score(X_train, y_train)))
+# print('R-squared score (test): {:.3f}'
+#      .format(model.score(X_test, y_test)))
 
 
 # In[ ]:
