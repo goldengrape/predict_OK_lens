@@ -37,7 +37,7 @@
 # * orbscan II：角膜地形图。
 #   也不是角膜地形图的原始数据，但除了Kmin, Kmax,还有Central corneal thickness, 3-mm-zone irregularity, 5-mm-zone irregularity
 
-# In[48]:
+# In[1]:
 
 
 import numpy as np
@@ -45,7 +45,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from functools import reduce
-
+from sklearn.model_selection import ShuffleSplit
+from sklearn.ensemble import RandomForestRegressor
 
 import os
 
@@ -54,7 +55,57 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 
 # ## 数据清洗
 # 
-# 读取数据后，将数据分成两部分，（务必要注意是否有数据泄露）
+# 读取数据
+
+# In[2]:
+
+
+data_file=os.path.join('data',"pone.0218140.s001.xlsx")
+
+patient_info=pd.read_excel(data_file,sheet_name="age, sex, visual acuity")
+AXL=pd.read_excel(data_file,sheet_name="AXL")
+CR=pd.read_excel(data_file,sheet_name="CR ")
+
+# 以下两个sheet中，顶部有Pre，12mo一行，
+# 略去，使得每一行与其他表格中的行位置相等。
+aberrometer=pd.read_excel(data_file,sheet_name="aberrometer",header=1) 
+cornea=pd.read_excel(data_file,sheet_name="orbscan II",header=1) 
+data_frames=[patient_info,AXL,CR,aberrometer,cornea]
+
+
+# 并不是所有的人都测量了所有的参数，所以将Patient ID和眼别整合到一起，形成一个新的eyeID。
+# 然后合并数据
+
+# In[3]:
+
+
+def clean_data(d):
+    d.fillna(method='ffill',inplace = True)
+    d["eyeID"]=d["Patient"]+" "+d['OD1, OS2'].map(str)
+    d.drop(["Patient",'OD1, OS2'],axis=1,inplace=True)
+    d.rename(columns={'Sex (male = 1, female = 2': 'sex'},inplace=True)
+    d=d.where(d.eyeID.apply(lambda x: x.startswith("#"))).dropna()
+    d=d.replace('*NA', np.nan).dropna() # 删除所有的*NA数据，这句话好难找
+
+    return d
+
+
+# In[4]:
+
+
+# drive me crazy, I don't know why I cant use for loop
+patient_info=clean_data(patient_info)
+AXL=clean_data(AXL)
+CR=clean_data(CR)
+aberrometer=clean_data(aberrometer)
+cornea=clean_data(cornea)
+
+
+df = reduce(lambda left,right: pd.merge(left,right,on='eyeID'), data_frames)
+df = df.replace("*NA",np.nan).dropna()
+
+
+# 将数据分成两部分，（务必要注意是否有数据泄露）
 # 
 # * X：从这些数据可能推导出结果，我估计会有术前的数据，一部分术后的数据。
 #     * patient_info中：``` ['Age','Sex (male = 1, female = 2']```
@@ -72,42 +123,115 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 # * Y：
 #     * AXL：12mo的C，N，T，以及delta，其中delta 12mo C AXL是最重要的数据。
 
-# In[89]:
+# In[5]:
 
 
-data_file=os.path.join('data',"pone.0218140.s001.xlsx")
+df_x=df[[
+        # 基本信息
+        'sex', 'Age',
+        # 术前眼轴长
+        'Pre C AXL', 'Pre N AXL', 'Pre T AXL',
+        # 术前验光
+        'Pre AR C Sph', 'Pre AR C cyl',
+        'Pre AR N Sph', 'Pre AR N cyl',
+        'Pre AR T Sph', 'Pre AR T cyl',
+        # 术前像差
+        'C2−2', 'C20', 'C22', 'C3−3', 'C3−1', 'C31', 
+        'C33', 'C4−4', 'C4−2', 'C40', 'C42', 'C44',
+        # 术后像差
+        'C2−2.1','C20.1', 'C22.1', 'C3−3.1', 'C3−1.1', 'C31.1', 
+        'C33.1', 'C4−4.1','C4−2.1', 'C40.1', 'C42.1', 'C44.1',
+        # 术前角膜地形图
+       "Sim K's astigmatism", 'Kmax',
+       'Kmin', 'Central corneal thickness', '3-mm-zone irregularity',
+       '5-mm-zone irregularity', 'pupil diameter', 'white-to-white',
+       'anterior chamber depth', 
+        # 术后角膜地形图
+       "Sim K's astigmatism.1", 'Kmax.1', 'Kmin.1',
+       'Central corneal thickness.1', '3-mm-zone irregularity.1',
+       '5-mm-zone irregularity.1', 'pupil diameter.1', 'white-to-white.1',
+       'anterior chamber depth.1', 
+        ]]
+df_y_candidate=df[['12mo C AXL', '12mo N AXL','12mo T AXL',
+         'delta C_12mo', 'delta N_12mo','delta T_12mo',
+        ]]
 
-patient_info=pd.read_excel(data_file,sheet_name="age, sex, visual acuity")
-AXL=pd.read_excel(data_file,sheet_name="AXL")
-CR=pd.read_excel(data_file,sheet_name="CR ")
 
-# 以下两个sheet中，顶部有Pre，12mo一行，
-# 略去，使得每一行与其他表格中的行位置相等。
-aberrometer=pd.read_excel(data_file,sheet_name="aberrometer",header=1) 
-cornea=pd.read_excel(data_file,sheet_name="orbscan II",header=1) 
-data_frames=[patient_info,AXL,CR,aberrometer,cornea]
+# 看看12月时，眼轴变化量的分布
+
+# In[6]:
 
 
-# 并不是所有的人都测量了所有的参数，所以将Patient ID和眼别整合到一起，形成一个新的eyeID。
-
-# In[91]:
+sns.violinplot(data=df_y_candidate[['delta C_12mo','delta N_12mo', 'delta T_12mo']], inner="points")
 
 
-for d in data_frames:
-    d["Patient"].fillna(method='ffill',inplace = True)
-    d["eyeID"]=d["Patient"]+" "+d['OD1, OS2'].map(str)
+# # 建模拟合
+# 
+# ## 分割数据集
+# 数据量有点少啊！只有17个可用的数据。凑合用吧。
+# 
+# 先按照3:1的比例分割数据集，将数据集分成train和test。
+
+# In[7]:
 
 
-# In[95]:
+rs=ShuffleSplit(n_splits=1, test_size=0.25, random_state=0)
+for train_index, test_index in rs.split(df_x):
+    print("TRAIN:", train_index, "TEST:", test_index)
 
 
-df = reduce(lambda left,right: pd.merge(left,right,on='eyeID'), data_frames)
+# In[8]:
 
 
-# In[96]:
+target=0 # 暂时只先定一个拟合目标。
+X_train=df_x.iloc[train_index,:]
+y_train=df_y_candidate.iloc[train_index,0]
+X_test=df_x.iloc[test_index,:]
+y_test=df_y_candidate.iloc[test_index,0]
 
 
-df
+# ## 建立模型
+
+# ## 线性拟合
+
+# In[14]:
+
+
+from sklearn.linear_model import LinearRegression
+model=LinearRegression().fit(X_train,y_train)
+
+print('R-squared score (training): {:.3f}'
+     .format(model.score(X_train, y_train)))
+print('R-squared score (test): {:.3f}'
+     .format(model.score(X_test, y_test)))
+
+
+# ## 随机森林拟合
+
+# In[16]:
+
+
+from sklearn.ensemble import RandomForestRegressor
+model=RandomForestRegressor().fit(X_train,y_train)
+print('R-squared score (training): {:.3f}'
+     .format(model.score(X_train, y_train)))
+print('R-squared score (test): {:.3f}'
+     .format(model.score(X_test, y_test)))
+
+
+# ## Logistic回归
+# 
+# https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
+
+# In[19]:
+
+
+from sklearn.linear_model import LogisticRegression
+model=LogisticRegression().fit(X_train,y_train)
+print('R-squared score (training): {:.3f}'
+     .format(model.score(X_train, y_train)))
+print('R-squared score (test): {:.3f}'
+     .format(model.score(X_test, y_test)))
 
 
 # In[ ]:
